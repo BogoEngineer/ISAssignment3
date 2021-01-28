@@ -2,7 +2,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy import random as rand
-from sklearn.linear_model import LinearRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.tree import plot_tree
 
 
 def main():
@@ -18,13 +19,13 @@ def main():
 
     # plotting correlation of y and each individual feature
     plt.ylabel("Type")
-    """for feature in data:
+    for feature in data:
         if feature == "type": continue
         fig = plt.gcf()
         fig.canvas.set_window_title(feature + " correlation to cake type")
         plt.xlabel(feature)
         plt.scatter(data[feature], data.type)
-        plt.show()"""
+        plt.show()
 
 
     # correlation matrix plot
@@ -41,6 +42,30 @@ def main():
     ax.set_xticklabels(names)
     ax.set_yticklabels(names)
     plt.show()
+
+    # normalization
+    for feature in data:
+        if feature == "type": continue
+        data[feature] = (data[feature] - data[feature].min()) / (data[feature].max() - data[feature].min())
+
+    # classifier
+    dtc = DecisionTreeClassifier(criterion="entropy")
+
+    split_row = int(data.shape[0] * 0.7)
+    train, test = data.iloc[:split_row, :], data.iloc[split_row:, :]
+
+    X = train[['flour', 'eggs', 'sugar', 'milk', 'butter', 'baking_powder']]
+    Y = train['type']
+    dtc.fit(X, Y)
+
+    X = test[['flour', 'eggs', 'sugar', 'milk', 'butter', 'baking_powder']]
+    Y = test['type']
+
+    score = dtc.score(X, Y)
+
+    print("SKLEARN SCORE: ", score)
+
+    plot_tree(dtc)
 
 if __name__ == "__main__":
     main()
