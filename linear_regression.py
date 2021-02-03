@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numpy import random as rand
 from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
 
 
 def main():
@@ -34,30 +35,29 @@ def main():
         if feature == "Price": continue
         data[feature] = (data[feature] - data[feature].min()) / (data[feature].max() - data[feature].min())
 
-    linear_reg_from_scratch(data)
-    sklearn_linear_reg(data)
+    X = data[['Year_built', 'Area', 'Bath_no']]
+    y = data['Price']
+
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=72)
+
+    linear_reg_from_scratch(x_train, y_train, x_test, y_test)
+    sklearn_linear_reg(x_train, y_train, x_test, y_test)
 
 
-def linear_reg_from_scratch(data):
-    W = np.array([rand.random_sample() for x in data if x != "Price"])
+def linear_reg_from_scratch(x_train, y_train, x_test, y_test):
+    W = np.array([rand.random_sample() for _ in x_train])
     bias = rand.random()
 
-    split_row = int(data.shape[0] * 0.7)
-    train, test = data.iloc[:split_row, :], data.iloc[split_row:, :]
-    # print(train.info())
-    # print(test.info())
-
-    gradient_descent(train.drop('Price', 1), train.Price, W, bias)
+    gradient_descent(x_train, y_train, W, bias)
 
     # test model
-    prediction = test.drop('Price', 1) @ W
-    test.insert(4, "Prediction", prediction, True)
+    prediction = x_test @ W
 
-    print(test)
+    # print(y_test)
 
     # R^2 score
-    u = ((test['Price'] - test['Prediction']) ** 2).sum()  # residual sum of squares
-    v = ((test['Price'] - test['Price'].mean()) ** 2).sum()  # total sum of squares
+    u = ((y_test - prediction) ** 2).sum()  # residual sum of squares
+    v = ((y_test - prediction.mean()) ** 2).sum()  # total sum of squares
     score = 1 - (u / v)
 
     print("FROM SCRATCH SCORE: ", score)
@@ -66,49 +66,50 @@ def linear_reg_from_scratch(data):
 
 
 def gradient_descent(features, target, weights, bias):
-    learning_rate = 0.15
+    """
+    m - number of training examples
+
+    :param features: (m, 3)
+    :param target:  (m, 1)
+    :param weights: (1, 3)
+    :param bias: (1, 1)
+    :return:
+    """
+
+    learning_rate = 0.5
     last_J = float('inf')
 
     while True:
-        prediction = features @ weights # + bias
-        difference = prediction - target
+        prediction = features @ weights + bias  # (m, 1)
+        difference = prediction - target  # (m, 1)
         L = difference ** 2  # loss function for each training example - Square Error
         m = len(target)
         J = L.sum() / (2 * m)  # overall cost function for this iteration of GD
 
-        print(J) # tracking cost function progress
-
-        # compute gradients
-        dW = np.array([difference @ features[x] for x in features])
-        dW /= m
-        # print("DW: ", dW)
-        weights -= dW * learning_rate
-
-        # db = difference.sum()
-        # db /= m
-        # bias -= db * learning_rate
-
         if J >= last_J: break  # if GD doesnt progress with this step, break
+        print(J)  # tracking cost function progress
         last_J = J
 
+        # compute gradients
+        dW = np.array([difference @ features[x] for x in features])  # (1, 3)
+        dW /= m
+        weights -= dW * learning_rate
 
-def sklearn_linear_reg(data):
+        db = difference.sum()  # (1, 1)
+        db /= m
+        bias -= db * learning_rate
+
+
+def sklearn_linear_reg(x_train, y_train, x_test, y_test):
     linearModel = LinearRegression()
 
-    split_row = int(data.shape[0] * 0.7)
-    train, test = data.iloc[:split_row, :], data.iloc[split_row:, :]
+    linearModel.fit(x_train, y_train)
 
-    X = train[['Year_built', 'Area', 'Bath_no']]
-    Y = train['Price']
-    linearModel.fit(X, Y)
-
-    X = test[['Year_built', 'Area', 'Bath_no']]
-    Y = test['Price']
-    score = linearModel.score(X, Y)
+    score = linearModel.score(x_test, y_test)
 
     print("SKLEARN SCORE: ", score)
 
-    print("SKLEARN COEF: ", linearModel.coef_)
+    print("SKLEARN COEFS: ", linearModel.coef_)
 
 
 if __name__ == "__main__":
